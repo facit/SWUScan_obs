@@ -14,7 +14,7 @@ online.
 2. Add a **SWU Scan Card** source to a scene. You can set its width, height and *Auto-hide after*.
 3. In OBS, open *Tools → WebSocket Server Settings*, enable the server, then click
    *Show Connect Info*.
-4. In the app, open *Settings → OBS* (part of Streamer) and scan the QR code.
+4. In the app, open *Settings → OBS* (part of Prices) and scan the QR code.
 
 The app can also use an OBS source, such as a table camera, as its camera: choose it under
 *Scan with*.
