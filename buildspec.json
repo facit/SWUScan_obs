@@ -33,13 +33,13 @@
     },
     "platformConfig": {
         "macos": {
-            "bundleId": "com.example.plugintemplate-for-obs"
+            "bundleId": "com.reventi.swuscan-obs"
         }
     },
-    "name": "plugintemplate-for-obs",
-    "displayName": "Plugin Template for OBS",
-    "version": "1.0.0",
-    "author": "Your Name Here",
-    "website": "https://example.com",
-    "email": "me@example.com"
+    "name": "swuscan-obs",
+    "displayName": "SWU Scan for OBS",
+    "version": "0.1.0",
+    "author": "The SWU Scan authors",
+    "website": "https://github.com/facit/SWUScan_obs",
+    "email": ""
 }
