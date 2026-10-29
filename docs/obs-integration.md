@@ -105,9 +105,16 @@ the first scan if the last answer is more than a minute old.
 
 ### `show_card`
 
-Sent once per **confirmed** scan. That means each transition into `.confirmed` on iOS, and each new
-`Converged` on Android, which includes the same card again after the scanner was reset. Tentative
-leaders are never sent, so the stream doesn't flicker.
+Sent for a **confirmed** scan and for an opened card. Concretely:
+- **Each transition into `.confirmed`** (iOS) or **each new `Converged`** (Android). That includes the
+  same card again after the scanner was reset, and a printing the user picked in the printing picker.
+  Tentative leaders are never sent, so the stream doesn't flicker.
+- **Whenever a card's detail sheet opens, anywhere in the app** (Search, Collection, decks), and again
+  when that sheet switches printing (the foil toggle's twin). The streamer can put any card on stream
+  on demand (Pontus, 2026-10-30).
+
+The live scanner's own confirmation card isn't a detail sheet; the scan is already sent when it
+confirms.
 
 ```json
 {
@@ -171,12 +178,9 @@ request in flight:
 **Multi scan** (docs/multi-scan.md) works on OBS frames exactly as on camera frames: they go through
 the same detector and tracker, the outlines are drawn over the OBS frame view in **fit** mode (the
 view letterboxes the whole frame, unlike the camera preview's fill), and tapping an outline scans that
-card. Tapping elsewhere does nothing, because there is no lens to focus. *Scan all*'s still is one
-`GetSourceScreenshot` **without** `imageWidth`/`imageHeight` (the source's native size), at
-`imageCompressionQuality` 95, while the 6 fps loop holds off. It has the same field of view as the live
-frames, so its live rect is the whole still. A 1080p webcam gives a 1080p still, so most binder-page
-cards come back as needs-review; a 4K source reads a 3×3 page. Scan all's cards go to the tray only,
-never to `show_card`: only confirmed live scans go to OBS.
+card. Tapping elsewhere does nothing, because there is no lens to focus. *Scan all* is hidden while OBS
+is the camera (Pontus, 2026-10-30): a stream shows one card at a time, picked by a tap. So the OBS
+session has no still capture, which overrides the OBS line in docs/multi-scan.md M6.
 
 **Calibration caveat.** The scan constants (`decisionWindow`, `commitConfidence`, the distance
 temperature) were tuned on close-range phone frames. A card on an overhead webcam covers far fewer
