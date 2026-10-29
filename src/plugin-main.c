@@ -62,7 +62,7 @@ struct card_source {
 	obs_source_t *browser;
 	uint32_t width;
 	uint32_t height;
-	double auto_hide; /* seconds; 0 = never */
+	double auto_hide;   /* seconds; 0 = never */
 	uint64_t resync_at; /* os_gettime_ns() when the last card should be re-sent; 0 = none pending */
 	struct card_source *next;
 };
