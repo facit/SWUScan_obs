@@ -168,6 +168,16 @@ request in flight:
 - An unknown source name (a renamed source) stops the loop with an error. The loop never retries
   forever on a failure.
 
+**Multi scan** (docs/multi-scan.md) works on OBS frames exactly as on camera frames: they go through
+the same detector and tracker, the outlines are drawn over the OBS frame view in **fit** mode (the
+view letterboxes the whole frame, unlike the camera preview's fill), and tapping an outline scans that
+card. Tapping elsewhere does nothing, because there is no lens to focus. *Scan all*'s still is one
+`GetSourceScreenshot` **without** `imageWidth`/`imageHeight` (the source's native size), at
+`imageCompressionQuality` 95, while the 6 fps loop holds off. It has the same field of view as the live
+frames, so its live rect is the whole still. A 1080p webcam gives a 1080p still, so most binder-page
+cards come back as needs-review; a 4K source reads a 3×3 page. Scan all's cards go to the tray only,
+never to `show_card`: only confirmed live scans go to OBS.
+
 **Calibration caveat.** The scan constants (`decisionWindow`, `commitConfidence`, the distance
 temperature) were tuned on close-range phone frames. A card on an overhead webcam covers far fewer
 pixels, and its collector line may be unreadable at 1080p. Expect OBS input to need a crop/zoom
