@@ -3,11 +3,13 @@
 The scanner connects to OBS Studio on the same network for two things. They are independent, and
 either one can be on or off:
 
-1. **Results to OBS.** Every confirmed scan is sent to the SWU Scan OBS plugin, which draws the card
-   (art, name, set and number, price) in a "SWU Scan Card" source with a fixed "Identified by
-   SWU Scan" badge. The plugin, not the phone, owns the look. That way a viewer can see which app
-   produced the data, and the badge cannot be turned off in a setting. Anyone can still crop or cover
-   it in OBS, because OBS composites everything. The plugin only makes doing so deliberate.
+1. **Results to OBS.** Every confirmed scan is sent to the SWU Scan OBS plugin, which draws it in two
+   sources the streamer places apart (Pontus, 2026-10-30): **SWU Scan Card** (art, name, subtitle
+   and, if switched on, the card id) and **SWU Scan Prices** (the price lines). Each carries a fixed "Identified by SWU Scan"
+   badge with the app logo. The streamer customises each source in its OBS properties (see *The
+   sources*). The plugin, not the phone, owns the look, and no property touches the badge: a viewer can
+   see which app produced the data. Anyone can still crop or cover it in OBS, because OBS composites
+   everything. The plugin only makes doing so deliberate.
 2. **OBS as the camera.** Instead of the phone's camera, the scanner analyses frames of an OBS
    source, for example a streamer's overhead table cam. It pulls them as screenshots, so OBS needs
    nothing beyond its built-in WebSocket server.
@@ -16,9 +18,9 @@ Both run over **obs-websocket v5**, which ships with OBS 28 and later. The phone
 client. OBS never connects to the phone, so nothing has to reach a phone whose IP changes or whose
 app is suspended.
 
-The whole feature is the paid `obsStreaming` feature, granted by the Prices product (the overlay
-is a price display on stream) and listed explicitly in Pro. So everyone who has it also has Prices,
-and price lines always go out when a price is known.
+OBS is free for everyone, the card source and OBS as the camera included (Pontus, 2026-10-30; it was
+part of Prices until the prices got their own source). Only the price lines need the Prices product:
+without it `prices` goes out empty and the SWU Scan Prices source stays hidden.
 
 The same protocol applies to the iOS app (this repo), the Android app (`SWUScan_android`, a copy of
 this file in `docs/`) and the plugin (`SWUScan_obs`). The shared test vectors are in
@@ -97,10 +99,11 @@ must be optional, so that a v1 plugin keeps working.
 
 Request: `{ "protocol": 1, "app": { "platform": "ios" | "android", "version": "2.5.0" } }`
 
-Response: `{ "protocol": 1, "pluginVersion": "1.0.0", "cardSources": 2 }`
+Response: `{ "protocol": 1, "pluginVersion": "0.2.0", "cardSources": 2, "priceSources": 1 }`
 
-`cardSources` is the number of "SWU Scan Card" sources that exist in OBS. When it is 0 the app warns
-"Add a SWU Scan Card source in OBS". The app sends `hello` right after Identified, and again before
+`cardSources` and `priceSources` are the numbers of "SWU Scan Card" and "SWU Scan Prices" sources that
+exist in OBS. `priceSources` is missing from a 0.1 plugin; read it as 0. When both are 0 the app warns
+"Add a SWU Scan Card or SWU Scan Prices source in OBS". The app sends `hello` right after Identified, and again before
 the first scan if the last answer is more than a minute old.
 
 ### `show_card`
@@ -143,12 +146,33 @@ confirms.
   manifest image URL as the fallback. When no art can be had, `art` is left out and the plugin shows
   the name panel alone.
 
-Response: `{ "shown": 2 }`, the number of card sources updated.
+Response: `{ "shown": 2 }`, the number of sources updated, of both kinds.
 
 ### `clear`
 
 Request: `{ "protocol": 1 }`. It hides the card in every source. Sources also hide on their own after
 their *Auto-hide after* property (default 0 = never).
+
+## The sources
+
+Both sources are drawn by pages bundled with the plugin (`data/card.html`, `data/prices.html`). The plugin
+passes a source's properties to its page as custom properties in generated CSS. They are options, never
+free-form CSS, so no setting can restyle or hide the badge, which also ignores the colour options. The
+badge takes its own room in the layout and never sits on the art, name, printing or prices. The panel
+hugs its content, so a source larger than the card shows nothing in the spare room.
+
+| Property | SWU Scan Card | SWU Scan Prices |
+| --- | --- | --- |
+| Width × height | 1000 × 300 | 640 × 240 |
+| Auto-hide after | 0 s | 0 s |
+| Layout | Horizontal or vertical | Horizontal or vertical |
+| Shown | Art, name and subtitle, card id (the `printing` label, off by default) | Card name, Cardmarket, TCGplayer |
+| Colours | Background, text, border (with alpha) | Background, text, border (with alpha) |
+
+The prices source hides itself while the card on show has no
+price lines left to draw: no Prices, no known price, or only markets switched off in its properties.
+The app sends no settings for any of this; `show_card` is the same for every source and no protocol
+change is needed.
 
 ## OBS as the camera
 

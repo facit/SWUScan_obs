@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="14 14 72 72" aria-label="Mark"><defs><clipPath id="cid-m1"><rect x="31" y="23" width="38" height="54" rx="2.6"/></clipPath><linearGradient id="gid-m1" x1="0" y1="1" x2="1" y2="0"><stop offset="0.0%" stop-color="#f07f77"/><stop offset="16.7%" stop-color="#e09036"/><stop offset="33.3%" stop-color="#b2a92a"/><stop offset="50.0%" stop-color="#5bbd74"/><stop offset="66.7%" stop-color="#00bec7"/><stop offset="83.3%" stop-color="#65a7fa"/><stop offset="100.0%" stop-color="#b28fef"/></linearGradient></defs>
+<rect x="31" y="23" width="38" height="54" rx="2.6" fill="#fffdf6" stroke="#35230a" stroke-width="2.4"/>
+<g clip-path="url(#cid-m1)"><polygon points="31,77 55,23 69,23 45,77" fill="url(#gid-m1)"/>
+<rect x="36" y="28" width="28" height="22" rx="1.2" fill="none" stroke="#35230a" stroke-width="1.8"/><rect x="36" y="55" width="28" height="2.6" fill="#35230a"/><rect x="36" y="62" width="28" height="1.8" fill="#35230a"/><rect x="36" y="67" width="20" height="1.8" fill="#35230a"/><rect x="36" y="72" width="28" height="1.8" fill="#35230a"/></g>
+<rect x="31" y="23" width="38" height="54" rx="2.6" fill="none" stroke="#35230a" stroke-width="2.4"/>
+<path d="M13,31 L13,20 A7,7 0 0 1 20,13 L31,13" fill="none" stroke="#35230a" stroke-width="3" stroke-linecap="round"/>
+<path d="M87,31 L87,20 A7,7 0 0 0 80,13 L69,13" fill="none" stroke="#35230a" stroke-width="3" stroke-linecap="round"/>
+<path d="M13,69 L13,80 A7,7 0 0 0 20,87 L31,87" fill="none" stroke="#35230a" stroke-width="3" stroke-linecap="round"/>
+<path d="M87,69 L87,80 A7,7 0 0 1 80,87 L69,87" fill="none" stroke="#35230a" stroke-width="3" stroke-linecap="round"/></svg>

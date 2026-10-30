@@ -1,0 +1,26 @@
+/*
+  Shared by card.html and prices.html. Colours and options arrive as custom properties in the CSS the
+  plugin generates from the source's properties (build_css in src/plugin-main.c); these are the defaults.
+  --u is the page's unit, so a tall narrow source keeps readable text.
+*/
+:root { --ink: #f4f1ea; --panel: rgba(18, 20, 26, 0.92); --edge: #e8b04a; --vertical: 0; --u: 1vh; }
+body.vertical { --u: 0.9vw; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
+/* The panel hugs its content, so a source larger than the card shows nothing in the spare room. */
+.panel { position: absolute; top: 4%; bottom: 4%; left: 2%; width: fit-content; max-width: 96%; box-sizing: border-box;
+  background: var(--panel);
+  border: calc(var(--u) * 0.4) solid var(--edge); border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 3);
+  box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 4) rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(8%); transition: opacity .35s, transform .35s; }
+.panel.on { opacity: 1; transform: none; }
+body.vertical .panel { right: 2%; bottom: auto; width: auto; max-height: 92%; }
+.muted { opacity: 0.72; }
+/* The badge: part of the page, always shown with the panel, and not themed, so no colour choice can hide it.
+   It takes its own room in the layout, so it never sits on the card, the name or the prices. */
+#badge { flex: none; align-self: flex-end; display: flex; align-items: center;
+  gap: calc(var(--u) * 1.4); font-size: calc(var(--u) * 4.6); font-weight: 600; color: #f4f1ea;
+  background: rgba(0,0,0,0.6); padding: calc(var(--u) * 0.8) calc(var(--u) * 1.8) calc(var(--u) * 0.8) calc(var(--u) * 0.8);
+  border-radius: 99vh; white-space: nowrap; }
+/* The cream tile, as on the app icon: the mark's dark outline would vanish on the pill. */
+#badge img { height: calc(var(--u) * 8); width: calc(var(--u) * 8); border-radius: 22%; background: #faf2e1; }

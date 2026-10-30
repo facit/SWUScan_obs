@@ -1,8 +1,9 @@
 # SWU Scan for OBS
 
-Shows the cards the SWU Scan app (iOS and Android) scans on your stream. Each confirmed scan
-appears in a **SWU Scan Card** source: the card's art, its name, the printing and its price, plus
-an "Identified by SWU Scan" badge, so viewers can see where the data comes from.
+Shows the cards the SWU Scan app (iOS and Android) scans on your stream, in two sources you place
+apart: **SWU Scan Card** (the card's art, name and printing) and **SWU Scan Prices** (its prices,
+with the app's Prices purchase). Both carry an "Identified by SWU Scan" badge with the app logo, so
+viewers can see where the data comes from.
 
 The phone talks to OBS's built-in WebSocket server (OBS 28 or later). There is nothing to host
 and no browser page to set up. The phone sends the card art itself, so the plugin never goes
@@ -11,10 +12,12 @@ online.
 ## Setup
 
 1. Install the plugin for your platform from [Releases](../../releases) and restart OBS.
-2. Add a **SWU Scan Card** source to a scene. You can set its width, height and *Auto-hide after*.
+2. Add a **SWU Scan Card** source and, if you like, a **SWU Scan Prices** source to a scene. In a
+   source's properties you can set its size, *Auto-hide after*, horizontal or vertical layout,
+   which lines it shows, and its colours (including a transparent background).
 3. In OBS, open *Tools → WebSocket Server Settings*, enable the server, then click
    *Show Connect Info*.
-4. In the app, open *Settings → OBS* (part of Prices) and scan the QR code.
+4. In the app, open *Settings → OBS* and scan the QR code.
 
 The app can also use an OBS source, such as a table camera, as its camera: choose it under
 *Scan with*.
@@ -26,9 +29,11 @@ the canonical file in the SWU Scan iOS repo.
 
 - The plugin registers the obs-websocket vendor `swuscan` with the requests `hello`,
   `show_card` and `clear`.
-- Each card source owns a private browser source that shows `data/card.html`. The plugin
-  passes each card to that page as a JavaScript event, using obs-browser's `emit_event`.
-- Because the page ships inside the plugin, its look and badge aren't a setting.
+- Each source owns a private browser source that shows `data/card.html` or `data/prices.html`.
+  The plugin passes each card to those pages as a JavaScript event, using obs-browser's
+  `emit_event`.
+- The pages ship inside the plugin. A source's properties reach its page as options in generated
+  CSS, never as free-form CSS, so the badge isn't a setting.
 
 To check a running OBS with this plugin installed:
 

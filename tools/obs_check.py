@@ -106,6 +106,10 @@ async def main():
                                                   "inputSettings": {}})
             check(r["requestStatus"]["result"] or r["requestStatus"]["code"] == 601,
                   "SWU Scan Card source created (the plugin registered swuscan_card)")
+            r = await obs.request("CreateInput", {"sceneName": scene, "inputName": "SWU Scan Prices", "inputKind": "swuscan_prices",
+                                                  "inputSettings": {}})
+            check(r["requestStatus"]["result"] or r["requestStatus"]["code"] == 601,
+                  "SWU Scan Prices source created (the plugin registered swuscan_prices)")
             await asyncio.sleep(0.5)
 
         r = await obs.vendor("hello", {"protocol": 1, "app": {"platform": "check", "version": "0"}})
@@ -113,6 +117,7 @@ async def main():
         h = r["responseData"]["responseData"]
         check(h.get("protocol") == 1, f"plugin {h.get('pluginVersion')} speaks protocol {h.get('protocol')}")
         check(h.get("cardSources", 0) >= 1, f"{h.get('cardSources')} SWU Scan Card source(s)")
+        print(f"     {h.get('priceSources', 0)} SWU Scan Prices source(s)")
 
         card = {"protocol": 1, "cardId": "SOR/005", "name": "Luke Skywalker", "subtitle": "Faithful Friend", "printing": "SOR · 005",
                 "prices": [{"market": "Cardmarket", "currency": "EUR", "amount": 1.5, "text": "€1.50"}],

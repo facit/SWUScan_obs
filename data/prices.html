@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+  The SWU Scan Prices source's page (src/plugin-main.c, docs/obs-integration.md): the price lines of the
+  card on show, for placing apart from the card. Same events and same offline rules as card.html.
+
+  show_card's `prices` is empty when the user doesn't own Prices or no price is known. The panel then
+  stays hidden, so an empty box never sits on stream.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="overlay.css">
+<style>
+  :root { --show-name: 1; --show-cardmarket: 1; --show-tcgplayer: 1; }
+  #prices-panel { display: flex; flex-direction: column; gap: calc(var(--u) * 2); bottom: auto; max-height: 92%; }
+  .none { display: none; }
+  #name { font-size: calc(var(--u) * 11); font-weight: 700; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #prices { display: flex; gap: calc(var(--u) * 8); font-size: calc(var(--u) * 16); font-weight: 600; }
+  body.vertical #prices { flex-direction: column; gap: calc(var(--u) * 4); }
+  #prices .market { display: block; font-size: calc(var(--u) * 7); font-weight: 400; }
+  /* The same size as the market names, and the logo to match. */
+  #badge { font-size: calc(var(--u) * 7); }
+  #badge img { height: calc(var(--u) * 8.4); width: calc(var(--u) * 8.4); }
+</style>
+</head>
+<body>
+<div id="prices-panel" class="panel">
+  <div id="name"></div>
+  <div id="prices"></div>
+  <div id="badge"><img src="logo.svg" alt="">Identified by SWU Scan</div>
+</div>
+<script>
+  "use strict";
+  const panel = document.getElementById("prices-panel");
+  const nameLine = document.getElementById("name");
+  const list = document.getElementById("prices");
+  let shownSeq = null;
+
+  const option = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() === "1";
+  /* Unknown markets always show: a new market shouldn't need a plugin update. */
+  const marketShown = market => {
+    const key = (market || "").toLowerCase();
+    return !["cardmarket", "tcgplayer"].includes(key) || option("--show-" + key);
+  };
+
+  function show(c) {
+    if (!c || c.seq === shownSeq) return;          // a re-send of what's already up
+    shownSeq = c.seq;
+    document.body.classList.toggle("vertical", option("--vertical"));
+    const prices = (c.prices || []).filter(p => marketShown(p.market));
+    panel.classList.remove("on");
+    if (!prices.length) return;
+    nameLine.textContent = c.name || "";
+    nameLine.classList.toggle("none", !option("--show-name"));
+    list.replaceChildren(...prices.map(p => {
+      const el = document.createElement("div");
+      const market = document.createElement("span");
+      market.className = "market muted";
+      market.textContent = p.market;
+      el.append(market, document.createTextNode(p.text));
+      return el;
+    }));
+    void panel.offsetWidth;                         // restart the entrance transition
+    panel.classList.add("on");
+  }
+
+  window.addEventListener("swuscanCard", e => show(e.detail));
+  window.addEventListener("swuscanClear", () => { shownSeq = null; panel.classList.remove("on"); });
+</script>
+</body>
+</html>
