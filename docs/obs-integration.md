@@ -157,11 +157,13 @@ their *Auto-hide after* property (default 0 = never).
 
 Both sources are drawn by pages bundled with the plugin (`data/card.html`, `data/prices.html`). The plugin
 passes a source's properties to its page as custom properties in generated CSS. They are options, never
-free-form CSS, so no setting can restyle or hide the badge, which also ignores the colour options.
+free-form CSS, so no setting can restyle or hide the badge, which also ignores the colour options. The
+badge takes its own room in the layout and never sits on the art, name, printing or prices. The panel
+hugs its content, so a source larger than the card shows nothing in the spare room.
 
 | Property | SWU Scan Card | SWU Scan Prices |
 | --- | --- | --- |
-| Width × height | 1280 × 360 | 800 × 300 |
+| Width × height | 1000 × 300 | 640 × 240 |
 | Auto-hide after | 0 s | 0 s |
 | Layout | Horizontal or vertical | Horizontal or vertical |
 | Shown | Art, subtitle, printing | Card name, Cardmarket, TCGplayer |

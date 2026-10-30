@@ -12,12 +12,15 @@
 <link rel="stylesheet" href="overlay.css">
 <style>
   :root { --show-name: 1; --show-cardmarket: 1; --show-tcgplayer: 1; }
-  #prices-panel { display: flex; flex-direction: column; gap: calc(var(--u) * 2); }
+  #prices-panel { display: flex; flex-direction: column; gap: calc(var(--u) * 2); bottom: auto; max-height: 92%; }
   .none { display: none; }
   #name { font-size: calc(var(--u) * 11); font-weight: 700; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #prices { display: flex; gap: calc(var(--u) * 8); font-size: calc(var(--u) * 16); font-weight: 600; }
   body.vertical #prices { flex-direction: column; gap: calc(var(--u) * 4); }
   #prices .market { display: block; font-size: calc(var(--u) * 7); font-weight: 400; }
+  /* The same size as the market names, and the logo to match. */
+  #badge { font-size: calc(var(--u) * 7); }
+  #badge img { height: calc(var(--u) * 8.4); width: calc(var(--u) * 8.4); }
 </style>
 </head>
 <body>

@@ -335,8 +335,8 @@ static void common_defaults(obs_data_t *settings)
 static void card_defaults(obs_data_t *settings)
 {
 	common_defaults(settings);
-	obs_data_set_default_int(settings, "width", 1280);
-	obs_data_set_default_int(settings, "height", 360);
+	obs_data_set_default_int(settings, "width", 1000);
+	obs_data_set_default_int(settings, "height", 300);
 	obs_data_set_default_bool(settings, "show_art", true);
 	obs_data_set_default_bool(settings, "show_subtitle", true);
 	obs_data_set_default_bool(settings, "show_printing", true);
@@ -345,8 +345,8 @@ static void card_defaults(obs_data_t *settings)
 static void prices_defaults(obs_data_t *settings)
 {
 	common_defaults(settings);
-	obs_data_set_default_int(settings, "width", 800);
-	obs_data_set_default_int(settings, "height", 300);
+	obs_data_set_default_int(settings, "width", 640);
+	obs_data_set_default_int(settings, "height", 240);
 	obs_data_set_default_bool(settings, "show_name", true);
 	obs_data_set_default_bool(settings, "show_cardmarket", true);
 	obs_data_set_default_bool(settings, "show_tcgplayer", true);
