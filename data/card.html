@@ -14,7 +14,7 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="overlay.css">
 <style>
-  :root { --show-art: 1; --show-subtitle: 1; --show-printing: 1; }
+  :root { --show-art: 1; --show-name: 1; --show-printing: 0; }
   #card { display: flex; gap: calc(var(--u) * 3); align-items: stretch; }
   body.vertical #card { flex-direction: column; }
   /* A long name gives way first (ellipsis), then the art; the badge's room in #text never does. */
@@ -58,8 +58,8 @@
     if (!c || c.seq === shownSeq) return;          // a re-send of what's already up
     shownSeq = c.seq;
     document.body.classList.toggle("vertical", option("--vertical"));
-    line("name", c.name, true);
-    line("subtitle", c.subtitle, option("--show-subtitle"));
+    line("name", c.name, option("--show-name"));
+    line("subtitle", c.subtitle, option("--show-name"));
     line("printing", c.printing, option("--show-printing"));
     if (option("--show-art") && c.art && c.art.base64) {
       art.src = "data:" + (c.art.mime || "image/jpeg") + ";base64," + c.art.base64;

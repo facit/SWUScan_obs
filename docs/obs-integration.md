@@ -4,8 +4,8 @@ The scanner connects to OBS Studio on the same network for two things. They are 
 either one can be on or off:
 
 1. **Results to OBS.** Every confirmed scan is sent to the SWU Scan OBS plugin, which draws it in two
-   sources the streamer places apart (Pontus, 2026-10-30): **SWU Scan Card** (art, name, subtitle,
-   printing) and **SWU Scan Prices** (the price lines). Each carries a fixed "Identified by SWU Scan"
+   sources the streamer places apart (Pontus, 2026-10-30): **SWU Scan Card** (art, name, subtitle
+   and, if switched on, the card id) and **SWU Scan Prices** (the price lines). Each carries a fixed "Identified by SWU Scan"
    badge with the app logo. The streamer customises each source in its OBS properties (see *The
    sources*). The plugin, not the phone, owns the look, and no property touches the badge: a viewer can
    see which app produced the data. Anyone can still crop or cover it in OBS, because OBS composites
@@ -166,10 +166,10 @@ hugs its content, so a source larger than the card shows nothing in the spare ro
 | Width × height | 1000 × 300 | 640 × 240 |
 | Auto-hide after | 0 s | 0 s |
 | Layout | Horizontal or vertical | Horizontal or vertical |
-| Shown | Art, subtitle, printing | Card name, Cardmarket, TCGplayer |
+| Shown | Art, name and subtitle, card id (the `printing` label, off by default) | Card name, Cardmarket, TCGplayer |
 | Colours | Background, text, border (with alpha) | Background, text, border (with alpha) |
 
-The card name is always on the card source. The prices source hides itself while the card on show has no
+The prices source hides itself while the card on show has no
 price lines left to draw: no Prices, no known price, or only markets switched off in its properties.
 The app sends no settings for any of this; `show_card` is the same for every source and no protocol
 change is needed.

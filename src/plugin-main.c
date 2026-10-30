@@ -232,7 +232,7 @@ static char *build_css(enum source_kind kind, obs_data_t *settings)
 	css_flag(&css, "--vertical", obs_data_get_int(settings, "layout") == 1);
 	if (kind == KIND_CARD) {
 		css_flag(&css, "--show-art", obs_data_get_bool(settings, "show_art"));
-		css_flag(&css, "--show-subtitle", obs_data_get_bool(settings, "show_subtitle"));
+		css_flag(&css, "--show-name", obs_data_get_bool(settings, "show_name"));
 		css_flag(&css, "--show-printing", obs_data_get_bool(settings, "show_printing"));
 	} else {
 		css_flag(&css, "--show-name", obs_data_get_bool(settings, "show_name"));
@@ -338,8 +338,8 @@ static void card_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "width", 1000);
 	obs_data_set_default_int(settings, "height", 300);
 	obs_data_set_default_bool(settings, "show_art", true);
-	obs_data_set_default_bool(settings, "show_subtitle", true);
-	obs_data_set_default_bool(settings, "show_printing", true);
+	obs_data_set_default_bool(settings, "show_name", true);
+	obs_data_set_default_bool(settings, "show_printing", false);
 }
 
 static void prices_defaults(obs_data_t *settings)
@@ -379,8 +379,8 @@ static obs_properties_t *card_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 	obs_properties_t *props = common_properties();
 	obs_properties_add_bool(props, "show_art", obs_module_text("ShowArt"));
-	obs_properties_add_bool(props, "show_subtitle", obs_module_text("ShowSubtitle"));
-	obs_properties_add_bool(props, "show_printing", obs_module_text("ShowPrinting"));
+	obs_properties_add_bool(props, "show_name", obs_module_text("ShowNameSubtitle"));
+	obs_properties_add_bool(props, "show_printing", obs_module_text("ShowCardId"));
 	add_colors(props);
 	return props;
 }
