@@ -1,9 +1,10 @@
 <!doctype html>
 <!--
-  The SWU Scan Card source's page (src/plugin-main.c, docs/obs-integration.md). Bundled with the plugin
-  and loaded into a private browser source: not a setting, so the layout and the "Identified by
-  SWU Scan" badge can't be restyled away. Offline by design: no fonts, scripts or images from the
-  network; the art arrives as base64 in the event.
+  The SWU Scan Card source's page (src/plugin-main.c, docs/obs-integration.md): the art, name, subtitle and
+  printing. The prices have their own source (prices.html). Bundled with the plugin and loaded into a
+  private browser source. Offline by design: no fonts, scripts or images from the network; the art
+  arrives as base64 in the event. The source's properties arrive as custom properties in the CSS the
+  plugin generates: options, never free-form CSS, so the "Identified by SWU Scan" badge can't be restyled away.
 
   Events (dispatched by obs-browser's emit_event): "swuscanCard" with the show_card body plus "seq",
   and "swuscanClear". A re-send of the card already shown (same seq) is ignored.
@@ -11,42 +12,29 @@
 <html>
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="overlay.css">
 <style>
-  :root { --ink: #f4f1ea; --muted: #b9b3a6; --panel: rgba(18, 20, 26, 0.92); --edge: #e8b04a; }
-  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
-  #card { position: absolute; inset: 4% 2%; display: flex; gap: 3vh; align-items: stretch;
-    background: var(--panel); border: 0.4vh solid var(--edge); border-radius: 3vh; padding: 3vh;
-    box-shadow: 0 1vh 4vh rgba(0,0,0,0.5); opacity: 0; transform: translateY(8%); transition: opacity .35s, transform .35s; }
-  #card.on { opacity: 1; transform: none; }
-  #art { flex: 0 0 auto; height: 100%; border-radius: 1.5vh; object-fit: contain; max-width: 45%; }
-  #art.none { display: none; }
+  :root { --show-art: 1; --show-subtitle: 1; --show-printing: 1; }
+  #card { display: flex; gap: calc(var(--u) * 3); align-items: stretch; }
+  body.vertical #card { flex-direction: column; }
+  #art { flex: 0 0 auto; height: 100%; border-radius: calc(var(--u) * 1.5); object-fit: contain; max-width: 45%; }
+  body.vertical #art { height: auto; width: 100%; max-width: 100%; max-height: 70%; }
+  .none { display: none; }
   #text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #name { font-size: 11vh; font-weight: 700; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #subtitle { font-size: 6.5vh; color: var(--muted); margin-top: 1vh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #printing { font-size: 5.5vh; color: var(--muted); margin-top: 2vh; letter-spacing: .05em; }
-  #prices { display: flex; gap: 4vh; margin-top: auto; font-size: 7vh; font-weight: 600; }
-  #prices .market { display: block; font-size: 4vh; font-weight: 400; color: var(--muted); }
-  /* The badge: part of the page, always shown with the card. */
-  #badge { position: absolute; right: 3vh; bottom: 3vh; display: flex; align-items: center; gap: 1.2vh;
-    font-size: 4.2vh; font-weight: 600; color: var(--edge); background: rgba(0,0,0,0.35);
-    padding: 0.8vh 1.8vh; border-radius: 99vh; }
-  #badge svg { height: 4.6vh; width: 4.6vh; }
+  #name { font-size: calc(var(--u) * 11); font-weight: 700; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #subtitle { font-size: calc(var(--u) * 6.5); margin-top: calc(var(--u) * 1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #printing { font-size: calc(var(--u) * 5.5); margin-top: calc(var(--u) * 2); letter-spacing: .05em; }
 </style>
 </head>
 <body>
-<div id="card">
+<div id="card" class="panel">
   <img id="art" class="none" alt="">
   <div id="text">
     <div id="name"></div>
-    <div id="subtitle"></div>
-    <div id="printing"></div>
-    <div id="prices"></div>
+    <div id="subtitle" class="muted"></div>
+    <div id="printing" class="muted"></div>
   </div>
-  <div id="badge">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 8V4.5A2.5 2.5 0 0 1 4.5 2M22 8V4.5A2.5 2.5 0 0 0 19.5 2M2 16v3.5A2.5 2.5 0 0 0 4.5 22M22 16v3.5a2.5 2.5 0 0 1-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-    Identified by SWU Scan
-  </div>
+  <div id="badge"><img src="logo.svg" alt="">Identified by SWU Scan</div>
 </div>
 <script>
   "use strict";
@@ -54,24 +42,22 @@
   const art = document.getElementById("art");
   let shownSeq = null;
 
-  function text(id, value) { document.getElementById(id).textContent = value || ""; }
+  const option = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() === "1";
+
+  function line(id, value, shown) {
+    const el = document.getElementById(id);
+    el.textContent = value || "";
+    el.classList.toggle("none", !shown);
+  }
 
   function show(c) {
     if (!c || c.seq === shownSeq) return;          // a re-send of what's already up
     shownSeq = c.seq;
-    text("name", c.name);
-    text("subtitle", c.subtitle);
-    text("printing", c.printing);
-    const prices = document.getElementById("prices");
-    prices.replaceChildren(...(c.prices || []).map(p => {
-      const el = document.createElement("div");
-      const market = document.createElement("span");
-      market.className = "market";
-      market.textContent = p.market;
-      el.append(market, document.createTextNode(p.text));
-      return el;
-    }));
-    if (c.art && c.art.base64) {
+    document.body.classList.toggle("vertical", option("--vertical"));
+    line("name", c.name, true);
+    line("subtitle", c.subtitle, option("--show-subtitle"));
+    line("printing", c.printing, option("--show-printing"));
+    if (option("--show-art") && c.art && c.art.base64) {
       art.src = "data:" + (c.art.mime || "image/jpeg") + ";base64," + c.art.base64;
       art.classList.remove("none");
     } else {
