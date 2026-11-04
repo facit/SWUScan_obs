@@ -39,7 +39,7 @@
     "name": "swuscan-obs",
     "displayName": "SWU Scan for OBS",
     "version": "0.2.0",
-    "author": "The SWU Scan authors",
+    "author": "Pontus Welin",
     "website": "https://github.com/facit/SWUScan_obs",
-    "email": ""
+    "email": "pontus@reventi.se"
 }
