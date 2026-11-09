@@ -128,7 +128,7 @@ confirms.
   "printing": "SOR · 010",
   "prices": [ { "market": "Cardmarket", "currency": "EUR", "amount": 1.5, "text": "€1.50" },
               { "market": "TCGplayer",  "currency": "USD", "amount": 1.89, "text": "$1.89" } ],
-  "art": { "mime": "image/jpeg", "base64": "…", "width": 430, "height": 600 },
+  "art": { "mime": "image/jpeg", "base64": "…", "width": 716, "height": 1000 },
   "app": { "platform": "ios", "version": "2.5.0" }
 }
 ```
@@ -139,12 +139,13 @@ confirms.
 - `prices` holds the markets the user shows in the app (Settings › Prices). It is empty when the user
   doesn't own Prices or no price is known. Each `amount` is a number in `currency`, and `text` is the
   app's own formatting, which the plugin shows verbatim.
-- `art` is the front of the card as a JPEG, scaled so its longer side is 600 px and encoded as base64
-  with no `data:` prefix. Landscape cards (leaders' backs, bases) stay landscape, and the plugin
-  lays them out by their size. Sending the bytes means the plugin never touches the network and
-  works offline. The art comes from the app's own reference art, or the downloaded set art, with the
-  manifest image URL as the fallback. When no art can be had, `art` is left out and the plugin shows
-  the name panel alone.
+- `art` is the front of the card as a JPEG at the art's own size, with no cap (owner, 2026-11-09: "the
+  highest quality available"; SWU's newer sets are 1000 px on the long side, older ones about 419 px),
+  encoded as base64 with no `data:` prefix. Landscape cards (leaders' backs, bases) stay landscape, and
+  the plugin lays them out by their size. Sending the bytes means the plugin never touches the network
+  and works offline. The art is the official CDN's image first; offline, the app's own art on the phone
+  (its bundled reference art). When no art can be had, `art` is left out and
+  the plugin shows the name panel alone.
 
 Response: `{ "shown": 2 }`, the number of sources updated, of both kinds.
 
