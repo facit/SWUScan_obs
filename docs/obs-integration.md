@@ -109,7 +109,22 @@ Response: `{ "protocol": 1, "pluginVersion": "0.2.0", "cardSources": 2, "priceSo
 
 `cardSources` and `priceSources` are the numbers of "SWU Scan Card" and "SWU Scan Prices" sources that
 exist in OBS. `priceSources` is missing from a 0.1 plugin; read it as 0. When both are 0 the app warns
-"Add a SWU Scan Card or SWU Scan Prices source in OBS". The app sends `hello` right after Identified, and again before
+"Add a SWU Scan Card or SWU Scan Prices source in OBS".
+
+From plugin 0.3 (player sides, 2026-11-12) the response also has:
+
+```json
+"features": { "side": true },
+"sideSources": { "card":  { "any": 1, "1": 1, "2": 1 },
+                 "price": { "any": 0, "1": 1, "2": 1 } }
+```
+
+- `features` is an object of flags for what the plugin supports beyond the base protocol (an object, because
+  OBS's data arrays can only hold objects). `"side": true` means `show_card` and `clear` route by player side and
+  each source has a *Player side* property. A missing `features`, or a missing flag, means not supported.
+- `sideSources` counts each kind of source by its *Player side* (`any`, `1`, `2`). The app uses it to warn,
+  for example "No SWU Scan Card source is set to Player 2" when a card source shows only Player 1. With no
+  `side` feature the app hides its side switch and suggests updating the plugin. The app sends `hello` right after Identified, and again before
 the first scan if the last answer is more than a minute old.
 
 ### `show_card`
@@ -124,6 +139,12 @@ Sent for a **confirmed** scan and for an opened card. Concretely:
 
 The live scanner's own confirmation card isn't a detail sheet; the scan is already sent when it
 confirms.
+
+**From the Stream mode release** (docs/design/2026-11-12-obs-redesign.md, agreed 2026-11-12) the two rules
+above are replaced: **nothing is sent outside Stream mode**, and card sheets never send. In Stream mode a card
+is sent by the stream bar: its *Show* trigger (Manual, the default: the Show button; Live: each confirmed
+scan, as above; On Accept: when the scan is accepted), the recent strip, or search. Each carries the bar's
+side.
 
 ```json
 {
@@ -158,12 +179,29 @@ confirms.
   The plugin clips the art it shows with the same fraction, to the rectangle the art actually fills
   (the art can be letterboxed in its box), so the black corners never show (Pontus, 2026-11-12).
 
-Response: `{ "shown": 2 }`, the number of sources updated, of both kinds.
+- `side` is optional: `1` or `2`, the player side the card belongs to (Stream mode, docs/design/2026-11-12-
+  obs-redesign.md). Anything else, or no `side`, means **every side**: the card shows in every source, as
+  before sides existed. A source set to *Player side* 1 shows cards with side 1 and side-less cards; one set
+  to 2 likewise; one set to *Any* shows every card, so the last one sent wins.
+
+Response: `{ "shown": 2 }`, the number of sources that took the card, of both kinds.
 
 ### `clear`
 
-Request: `{ "protocol": 1 }`. It hides the card in every source. Sources also hide on their own after
-their *Auto-hide after* property (default 0 = never).
+Request: `{ "protocol": 1 }`, optionally with `"side": 1 | 2`. Without a side it hides the card in every
+source. With a side it takes down that side's card and any side-less card: a source set to that side clears,
+a source set to *Any* clears if what it shows came from that side (or had no side), and a source set to the
+other side keeps its card. Sources also hide on their own after their *Auto-hide after* property (default
+0 = never).
+
+### Backward compatibility of sides
+
+- **An old app** (no `side`) with a new plugin: every card is side-less, so every source shows it, whatever
+  its *Player side*. `clear` clears everything. That's the same as before.
+- **A new app** with an old plugin (no `features`): the plugin ignores `side`, so every source shows every
+  card. The app knows from `hello` and hides the side switch.
+- **Deck lists and the format filter** stay on the phone: the app decides the card and its side, and nothing
+  about them goes over the wire.
 
 ## The sources
 
@@ -176,6 +214,7 @@ hugs its content, so a source larger than the card shows nothing in the spare ro
 | Property | SWU Scan Card | SWU Scan Prices |
 | --- | --- | --- |
 | Width × height | 1000 × 300 | 640 × 240 |
+| Player side (plugin 0.3) | Any, 1 or 2 (default Any) | Any, 1 or 2 (default Any) |
 | Auto-hide after | 0 s | 0 s |
 | Layout | Horizontal or vertical | Horizontal or vertical |
 | Shown | Art, name and subtitle, card id (the `printing` label, off by default) | Card name, Cardmarket, TCGplayer |
@@ -187,6 +226,11 @@ The app sends no settings for any of this; `show_card` is the same for every sou
 change is needed.
 
 ## OBS as the camera
+
+**From the Stream mode release, OBS as the camera is offered only in Stream mode** (Pontus, 2026-11-12):
+outside it the scanner always uses the phone's camera. In Stream mode *Scan all* works on OBS frames, with a
+native-size `GetSourceScreenshot` as the still, and its results go to the stream bar's recent strip, never
+straight to the stream.
 
 The app lists candidate sources with `GetInputList` (inputs) and `GetSceneList` (scenes), and the
 user picks one. Audio-only inputs are left out, by `unversionedInputKind` (else `inputKind`):

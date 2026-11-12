@@ -29,12 +29,14 @@
   <div id="prices"></div>
   <div id="badge"><img src="logo.svg" alt="">Identified by SWU Scan</div>
 </div>
+<script src="side.js"></script>
 <script>
   "use strict";
   const panel = document.getElementById("prices-panel");
   const nameLine = document.getElementById("name");
   const list = document.getElementById("prices");
   let shownSeq = null;
+  let shownSide = null;
 
   const option = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() === "1";
   /* Unknown markets always show: a new market shouldn't need a plugin update. */
@@ -44,8 +46,10 @@
   };
 
   function show(c) {
-    if (!c || c.seq === shownSeq) return;          // a re-send of what's already up
+    if (!c || !SwuSide.takes(SwuSide.page(), SwuSide.of(c))) return;   // another side's card
+    if (shownSeq !== null && c.seq <= shownSeq) return;                // a re-send, or older than what's up
     shownSeq = c.seq;
+    shownSide = SwuSide.of(c);
     document.body.classList.toggle("vertical", option("--vertical"));
     const prices = (c.prices || []).filter(p => marketShown(p.market));
     panel.classList.remove("on");
@@ -65,7 +69,12 @@
   }
 
   window.addEventListener("swuscanCard", e => show(e.detail));
-  window.addEventListener("swuscanClear", () => { shownSeq = null; panel.classList.remove("on"); });
+  window.addEventListener("swuscanClear", e => {
+    if (shownSeq === null || !SwuSide.clears(SwuSide.of(e.detail), shownSide)) return;
+    shownSeq = null;
+    shownSide = null;
+    panel.classList.remove("on");
+  });
 </script>
 </body>
 </html>
