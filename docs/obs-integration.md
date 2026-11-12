@@ -72,6 +72,12 @@ RPC version. The app shows both as their own errors, not as a generic "disconnec
 unexpected drop it reconnects with backoff (1, 2, 4, 8, max 15 s). A failed password does **not**
 trigger a reconnect.
 
+Only the first attempt after a user action (connect) or activation shows "Connecting"; background
+retries leave the failure on screen until one succeeds, so an OBS the phone cannot reach does not flash
+"Connecting" forever (Pontus, 2026-10-30, phone on a guest Wi-Fi). A timeout and a transport failure
+both read "OBS unavailable. Check that OBS is running and that your phone is on the same Wi-Fi as your
+computer." A wrong password, an old OBS and a bad address keep their own texts.
+
 ## Results: the `swuscan` vendor
 
 The plugin registers the obs-websocket vendor `swuscan`. The app reaches it with `CallVendorRequest`:
@@ -146,6 +152,11 @@ confirms.
   and works offline. The art is the official CDN's image first; offline, the app's own art on the phone
   (its bundled reference art). When no art can be had, `art` is left out and
   the plugin shows the name panel alone.
+- The art's corners are rounded by the app, on black, with a radius of **4 % of its short side**
+  (`artCornerFraction`). JPEG has no transparency, so the official images' transparent corners would
+  otherwise come out filled; a card's own corner is 3.0–3.6 % of its short side, so 4 % covers every card.
+  The plugin clips the art it shows with the same fraction, to the rectangle the art actually fills
+  (the art can be letterboxed in its box), so the black corners never show (Pontus, 2026-11-12).
 
 Response: `{ "shown": 2 }`, the number of sources updated, of both kinds.
 
@@ -178,7 +189,12 @@ change is needed.
 ## OBS as the camera
 
 The app lists candidate sources with `GetInputList` (inputs) and `GetSceneList` (scenes), and the
-user picks one. While "OBS camera" is the scan input, the app runs a loop that keeps exactly one
+user picks one. Audio-only inputs are left out, by `unversionedInputKind` (else `inputKind`):
+`wasapi_input_capture`, `wasapi_output_capture`, `wasapi_process_output_capture`,
+`coreaudio_input_capture`, `coreaudio_output_capture`, `sck_audio_capture`, `pulse_input_capture`,
+`pulse_output_capture`, `alsa_input_capture`, `jack_output_capture` and `oss_input_capture`. Everything
+else stays, because media, NDI, browser and window sources and scenes can all be cameras (Pontus,
+2026-11-12). While "OBS camera" is the scan input, the app runs a loop that keeps exactly one
 request in flight:
 
 ```json
@@ -199,6 +215,31 @@ request in flight:
   frame instead of the camera preview.
 - An unknown source name (a renamed source) stops the loop with an error. The loop never retries
   forever on a failure.
+
+### When OBS is unreachable
+
+Not connected shows the phone's camera (Pontus, 2026-11-01). The saved source choice is kept, and the
+connection retries in the background; the scanner returns to the OBS source by itself when OBS is back.
+The decision is pure (`OBSCameraPolicy` on iOS) and takes the time of the drop, not only the status:
+
+- The scanner uses OBS only when a source is picked, the user wants to be connected, and the link is
+  usable. A first attempt in progress (launch, nothing has failed yet) counts as usable, so OBS does not
+  flash the phone's camera while it connects.
+- **The first failure** (no connection yet this launch) switches to the phone's camera at once.
+- **A drop from connected** keeps the OBS view (the frame view with "Reconnecting") for a grace period of
+  **10 seconds**, so a Wi-Fi blip does not flip to the phone's camera and back; then it falls back. The
+  background retries leave the status at failed, so the app records when the connection dropped. A new
+  attempt (a return to the foreground) inside that period keeps OBS; after it, it does not.
+- **Non-retryable failures** (wrong password, old OBS, bad address) fall back at once, grace or not.
+- The view must re-evaluate when the grace period ends, not only on the next state change.
+- The switch back to OBS, like the switch away, is held while a card is being committed (a confirmation
+  or printing picker up, a card selected in Multi), a Scan all run is in progress, or a sheet covers the scanner, because changing the
+  source restarts the scanner and drops its evidence. It happens when the hold ends.
+
+Settings: *Disconnect* is offered while a connection is failing too; it stops the retries and keeps the
+saved address and password. *Scan with* is reachable when not connected: "Phone camera" and the saved
+source (the list of sources is empty until OBS answers). *Forget this OBS* asks for confirmation first,
+because it deletes the saved address and password and the QR code has to be scanned again.
 
 **Multi scan** (docs/multi-scan.md) works on OBS frames exactly as on camera frames: they go through
 the same detector and tracker, the outlines are drawn over the OBS frame view in **fit** mode (the

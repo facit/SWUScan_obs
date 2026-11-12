@@ -18,7 +18,9 @@
   #card { display: flex; gap: calc(var(--u) * 3); align-items: stretch; }
   body.vertical #card { flex-direction: column; }
   /* A long name gives way first (ellipsis), then the art; the badge's room in #text never does. */
-  #art { flex: 0 1 auto; min-width: 0; min-height: 0; height: 100%; border-radius: calc(var(--u) * 1.5); object-fit: contain; }
+  /* Rounded by clipArt() below, not border-radius: object-fit: contain can letterbox the art inside this box (a long
+     name or a landscape leader narrows it), and a border-radius would round the box, not the art you see. */
+  #art { flex: 0 1 auto; min-width: 0; min-height: 0; height: 100%; object-fit: contain; }
   body.vertical #art { height: auto; width: 100%; }
   .none { display: none; }
   /* min-width: the badge's width, which this column has to hold. */
@@ -47,6 +49,22 @@
   let shownSeq = null;
 
   const option = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() === "1";
+
+  /* A card's own corner is 3.0–3.6 % of its short side (the official images, measured 2026-11-12); a bit more covers
+     it on every card, so the corners the app fills (JPEG has no transparency) never show. */
+  const CORNER = 0.04;
+
+  /* Clips the art to what object-fit: contain actually shows (centred, aspect kept), with the card's rounded corners. */
+  function clipArt() {
+    const nw = art.naturalWidth, nh = art.naturalHeight, bw = art.clientWidth, bh = art.clientHeight;
+    if (!nw || !nh || !bw || !bh) { art.style.clipPath = ""; return; }
+    const scale = Math.min(bw / nw, bh / nh);
+    const w = nw * scale, h = nh * scale;
+    const x = Math.max(0, (bw - w) / 2), y = Math.max(0, (bh - h) / 2);
+    art.style.clipPath = `inset(${y}px ${x}px round ${CORNER * Math.min(w, h)}px)`;
+  }
+  art.addEventListener("load", clipArt);
+  new ResizeObserver(clipArt).observe(art);
 
   function line(id, value, shown) {
     const el = document.getElementById(id);
