@@ -41,6 +41,11 @@ with this program. If not, see <https://www.gnu.org/licenses/>
  * page ignore a re-send of the card it already shows.
  *
  * The card art arrives as base64 JPEG bytes from the phone, so the plugin never touches the network.
+ *
+ * Player sides (plugin 0.3; docs/obs-integration.md): each source has a *Player side* (Any, 1 or 2), and
+ * `show_card` / `clear` may name a side. Because emit_event reaches every page, the routing happens in the pages
+ * (data/side.js, from the `--side` their CSS carries); the plugin keeps the last card per side (side-routing.h) so
+ * its re-sends, visibility and auto-hide are right per source. A request without a side behaves as before sides.
  */
 
 #include <string.h>
@@ -53,6 +58,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <plugin-support.h>
 
 #include "obs-websocket-api.h"
+#include "side-routing.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -74,6 +80,7 @@ struct card_source {
 	uint32_t width;
 	uint32_t height;
 	double auto_hide;   /* seconds; 0 = never */
+	int side;           /* Player side: 0 = Any, 1 or 2 */
 	uint64_t resync_at; /* os_gettime_ns() when the last card should be re-sent; 0 = none pending */
 	struct card_source *next;
 };
@@ -81,8 +88,10 @@ struct card_source {
 /* Shared by every source and the vendor callbacks (which run on obs-websocket's threads). */
 static pthread_mutex_t g_mutex;
 static struct card_source *g_sources;
-static char *g_last_card;   /* JSON of the last show_card (with "seq"), NULL after clear */
-static uint64_t g_shown_at; /* os_gettime_ns() of the last show_card */
+/* The last show_card per side (slot 0: no side), as JSON with "seq" and "side"; NULL when none or cleared. */
+static char *g_last[SWU_SIDES];
+static long long g_last_seq[SWU_SIDES]; /* the seq each slot holds; 0 = empty */
+static uint64_t g_shown_at[SWU_SIDES];  /* os_gettime_ns() each slot was sent */
 static long long g_seq;
 static obs_websocket_vendor g_vendor;
 
@@ -111,16 +120,31 @@ static void emit_js(const char *event_name, obs_data_t *event_data)
 	obs_data_release(inner);
 }
 
-/* Re-send the last card (UI thread task; never from the graphics thread). */
+/* Re-send the kept cards, oldest first, so each page ends on the newest card it takes (pages ignore a seq at or
+ * below the one they show). UI thread task; never from the graphics thread. */
 static void resync_task(void *unused)
 {
 	UNUSED_PARAMETER(unused);
+	obs_data_t *cards[SWU_SIDES] = {NULL};
+	long long seqs[SWU_SIDES] = {0};
 	pthread_mutex_lock(&g_mutex);
-	obs_data_t *card = g_last_card ? obs_data_create_from_json(g_last_card) : NULL;
+	for (int slot = 0; slot < SWU_SIDES; slot++) {
+		if (g_last[slot]) {
+			cards[slot] = obs_data_create_from_json(g_last[slot]);
+			seqs[slot] = g_last_seq[slot];
+		}
+	}
 	pthread_mutex_unlock(&g_mutex);
-	if (card) {
-		emit_js("swuscanCard", card);
-		obs_data_release(card);
+	for (int n = 0; n < SWU_SIDES; n++) {
+		int oldest = -1;
+		for (int slot = 0; slot < SWU_SIDES; slot++)
+			if (cards[slot] && (oldest < 0 || seqs[slot] < seqs[oldest]))
+				oldest = slot;
+		if (oldest < 0)
+			break;
+		emit_js("swuscanCard", cards[oldest]);
+		obs_data_release(cards[oldest]);
+		cards[oldest] = NULL;
 	}
 }
 
@@ -131,6 +155,30 @@ static int count_sources_locked(enum source_kind kind)
 		if (s->kind == kind)
 			n++;
 	return n;
+}
+
+/* Sources that take a card sent with card_side (both kinds). */
+static int count_taking_locked(int card_side)
+{
+	int n = 0;
+	for (struct card_source *s = g_sources; s; s = s->next)
+		if (swu_side_takes(s->side, card_side))
+			n++;
+	return n;
+}
+
+/* {"any": n, "1": n, "2": n}: the sources of one kind by their Player side. */
+static obs_data_t *sides_of_kind_locked(enum source_kind kind)
+{
+	int counts[SWU_SIDES] = {0};
+	for (struct card_source *s = g_sources; s; s = s->next)
+		if (s->kind == kind)
+			counts[s->side]++;
+	obs_data_t *d = obs_data_create();
+	obs_data_set_int(d, "any", counts[0]);
+	obs_data_set_int(d, "1", counts[1]);
+	obs_data_set_int(d, "2", counts[2]);
+	return d;
 }
 
 /* ------------------------------------------------------------------ the vendor */
@@ -158,11 +206,27 @@ static void vendor_hello(obs_data_t *request, obs_data_t *response, void *priv)
 	pthread_mutex_lock(&g_mutex);
 	int cards = count_sources_locked(KIND_CARD);
 	int prices = count_sources_locked(KIND_PRICES);
+	obs_data_t *card_sides = sides_of_kind_locked(KIND_CARD);
+	obs_data_t *price_sides = sides_of_kind_locked(KIND_PRICES);
 	pthread_mutex_unlock(&g_mutex);
 	obs_data_set_int(response, "protocol", SWUSCAN_PROTOCOL);
 	obs_data_set_string(response, "pluginVersion", PLUGIN_VERSION);
 	obs_data_set_int(response, "cardSources", cards);
 	obs_data_set_int(response, "priceSources", prices);
+
+	/* Plugin 0.3: what it supports beyond the base protocol (an object of flags: obs_data arrays hold only
+	 * objects), and the sources by side. */
+	obs_data_t *features = obs_data_create();
+	obs_data_set_bool(features, "side", true);
+	obs_data_set_obj(response, "features", features);
+	obs_data_release(features);
+	obs_data_t *side_sources = obs_data_create();
+	obs_data_set_obj(side_sources, "card", card_sides);
+	obs_data_set_obj(side_sources, "price", price_sides);
+	obs_data_set_obj(response, "sideSources", side_sources);
+	obs_data_release(side_sources);
+	obs_data_release(card_sides);
+	obs_data_release(price_sides);
 }
 
 static void vendor_show_card(obs_data_t *request, obs_data_t *response, void *priv)
@@ -170,12 +234,15 @@ static void vendor_show_card(obs_data_t *request, obs_data_t *response, void *pr
 	UNUSED_PARAMETER(priv);
 	if (!protocol_ok(request, response))
 		return;
+	int side = swu_side_from_int(obs_data_get_int(request, "side"));
 	pthread_mutex_lock(&g_mutex);
 	obs_data_set_int(request, "seq", ++g_seq);
-	bfree(g_last_card);
-	g_last_card = bstrdup(obs_data_get_json(request));
-	g_shown_at = os_gettime_ns();
-	int n = count_sources_locked(KIND_CARD) + count_sources_locked(KIND_PRICES);
+	obs_data_set_int(request, "side", side); /* normalised: the pages read 0 as no side */
+	bfree(g_last[side]);
+	g_last[side] = bstrdup(obs_data_get_json(request));
+	g_last_seq[side] = g_seq;
+	g_shown_at[side] = os_gettime_ns();
+	int n = count_taking_locked(side);
 	pthread_mutex_unlock(&g_mutex);
 
 	emit_js("swuscanCard", request);
@@ -187,11 +254,20 @@ static void vendor_clear(obs_data_t *request, obs_data_t *response, void *priv)
 	UNUSED_PARAMETER(priv);
 	if (!protocol_ok(request, response))
 		return;
+	int side = swu_side_from_int(obs_data_get_int(request, "side"));
 	pthread_mutex_lock(&g_mutex);
-	bfree(g_last_card);
-	g_last_card = NULL;
+	for (int slot = 0; slot < SWU_SIDES; slot++) {
+		if (swu_clear_drops(side, slot)) {
+			bfree(g_last[slot]);
+			g_last[slot] = NULL;
+			g_last_seq[slot] = 0;
+		}
+	}
 	pthread_mutex_unlock(&g_mutex);
-	emit_js("swuscanClear", NULL);
+	obs_data_t *event = obs_data_create();
+	obs_data_set_int(event, "side", side);
+	emit_js("swuscanClear", event);
+	obs_data_release(event);
 }
 
 /* ------------------------------------------------------------------ the source */
@@ -230,6 +306,7 @@ static char *build_css(enum source_kind kind, obs_data_t *settings)
 	css_color(&css, "--ink", obs_data_get_int(settings, "text"));
 	css_color(&css, "--edge", obs_data_get_int(settings, "border"));
 	css_flag(&css, "--vertical", obs_data_get_int(settings, "layout") == 1);
+	dstr_catf(&css, "--side:%d;", swu_side_from_int(obs_data_get_int(settings, "side")));
 	if (kind == KIND_CARD) {
 		css_flag(&css, "--show-art", obs_data_get_bool(settings, "show_art"));
 		css_flag(&css, "--show-name", obs_data_get_bool(settings, "show_name"));
@@ -269,6 +346,7 @@ static void card_update(void *data, obs_data_t *settings)
 	uint32_t w = (uint32_t)obs_data_get_int(settings, "width");
 	uint32_t h = (uint32_t)obs_data_get_int(settings, "height");
 	s->auto_hide = obs_data_get_double(settings, "auto_hide");
+	s->side = swu_side_from_int(obs_data_get_int(settings, "side"));
 	char *css = build_css(s->kind, settings);
 	if (w != s->width || h != s->height || !s->browser || !s->css || strcmp(css, s->css) != 0) {
 		s->width = w;
@@ -326,6 +404,7 @@ static void card_destroy(void *data)
 static void common_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, "auto_hide", 0.0);
+	obs_data_set_default_int(settings, "side", 0);
 	obs_data_set_default_int(settings, "layout", 0);
 	obs_data_set_default_int(settings, "background", 0xEB1A1412); /* rgba(18, 20, 26, 0.92) */
 	obs_data_set_default_int(settings, "text", 0xFFEAF1F4);       /* #f4f1ea */
@@ -364,6 +443,12 @@ static obs_properties_t *common_properties(void)
 							 OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(layout, obs_module_text("Layout.Horizontal"), 0);
 	obs_property_list_add_int(layout, obs_module_text("Layout.Vertical"), 1);
+	obs_property_t *side = obs_properties_add_list(props, "side", obs_module_text("Side"), OBS_COMBO_TYPE_LIST,
+						       OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(side, obs_module_text("Side.Any"), 0);
+	obs_property_list_add_int(side, obs_module_text("Side.Player1"), 1);
+	obs_property_list_add_int(side, obs_module_text("Side.Player2"), 2);
+	obs_property_set_long_description(side, obs_module_text("Side.Description"));
 	return props;
 }
 
@@ -406,14 +491,14 @@ static uint32_t card_height(void *data)
 	return ((struct card_source *)data)->height;
 }
 
-/* Whether this source draws the card right now: one has been shown and its auto-hide hasn't run out. */
+/* Whether this source draws the card right now: a card it takes has been shown and its auto-hide hasn't run out. */
 static bool card_visible(struct card_source *s)
 {
 	pthread_mutex_lock(&g_mutex);
-	bool has = g_last_card != NULL;
-	uint64_t at = g_shown_at;
+	int slot = swu_current_slot(s->side, g_last_seq);
+	uint64_t at = slot >= 0 ? g_shown_at[slot] : 0;
 	pthread_mutex_unlock(&g_mutex);
-	if (!has)
+	if (slot < 0)
 		return false;
 	return s->auto_hide <= 0.0 || (double)(os_gettime_ns() - at) / 1e9 < s->auto_hide;
 }
@@ -545,8 +630,11 @@ void obs_module_post_load(void)
 
 void obs_module_unload(void)
 {
-	bfree(g_last_card);
-	g_last_card = NULL;
+	for (int slot = 0; slot < SWU_SIDES; slot++) {
+		bfree(g_last[slot]);
+		g_last[slot] = NULL;
+		g_last_seq[slot] = 0;
+	}
 	pthread_mutex_destroy(&g_mutex);
 	obs_log(LOG_INFO, "plugin unloaded");
 }

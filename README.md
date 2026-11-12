@@ -14,7 +14,9 @@ online.
 1. Install the plugin for your platform from [Releases](../../releases) and restart OBS.
 2. Add a **SWU Scan Card** source and, if you like, a **SWU Scan Prices** source to a scene. In a
    source's properties you can set its size, *Auto-hide after*, horizontal or vertical layout,
-   which lines it shows, and its colours (including a transparent background).
+   which lines it shows, and its colours (including a transparent background). For two players, add one
+   card source per player and set each one's *Player side* to Player 1 or Player 2. The app's Stream mode then
+   sends each card to its side; *Any* (the default) shows every card.
 3. In OBS, open *Tools → WebSocket Server Settings*, enable the server, then click
    *Show Connect Info*.
 4. In the app, open *Settings → OBS* and scan the QR code.
@@ -57,3 +59,13 @@ secrets that the template's workflow expects.
 
 GPL-2.0-or-later, like OBS. `src/obs-websocket-api.h` is from
 [obs-websocket](https://github.com/obsproject/obs-websocket).
+
+## Tests
+
+- `cc -std=c11 -Wall -Wextra -Werror -Isrc tests/side-routing-test.c -o side-routing-test && ./side-routing-test`:
+  the player-side routing rules.
+- `node tools/check_pages.mjs` (needs Playwright): the card and prices pages' side rules in Chromium.
+- `python3 tools/obs_check.py --url obsws://host:port/password --setup --sides [--visual]`: a real OBS with
+  the plugin installed.
+
+CI runs the first two (`.github/workflows/tests.yaml`).

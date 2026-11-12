@@ -6,8 +6,9 @@
   arrives as base64 in the event. The source's properties arrive as custom properties in the CSS the
   plugin generates: options, never free-form CSS, so the "Identified by SWU Scan" badge can't be restyled away.
 
-  Events (dispatched by obs-browser's emit_event): "swuscanCard" with the show_card body plus "seq",
-  and "swuscanClear". A re-send of the card already shown (same seq) is ignored.
+  Events (dispatched by obs-browser's emit_event): "swuscanCard" with the show_card body plus "seq" and "side",
+  and "swuscanClear" with "side". Every page gets every event, so side.js decides which are for this source (its
+  Player side arrives as --side). A card at or below the seq already shown (a re-send) is ignored.
 -->
 <html>
 <head>
@@ -42,11 +43,13 @@
     <div id="badge"><img src="logo.svg" alt="">Identified by SWU Scan</div>
   </div>
 </div>
+<script src="side.js"></script>
 <script>
   "use strict";
   const card = document.getElementById("card");
   const art = document.getElementById("art");
   let shownSeq = null;
+  let shownSide = null;
 
   const option = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() === "1";
 
@@ -73,8 +76,10 @@
   }
 
   function show(c) {
-    if (!c || c.seq === shownSeq) return;          // a re-send of what's already up
+    if (!c || !SwuSide.takes(SwuSide.page(), SwuSide.of(c))) return;   // another side's card
+    if (shownSeq !== null && c.seq <= shownSeq) return;                // a re-send, or older than what's up
     shownSeq = c.seq;
+    shownSide = SwuSide.of(c);
     document.body.classList.toggle("vertical", option("--vertical"));
     line("name", c.name, option("--show-name"));
     line("subtitle", c.subtitle, option("--show-name"));
@@ -92,7 +97,12 @@
   }
 
   window.addEventListener("swuscanCard", e => show(e.detail));
-  window.addEventListener("swuscanClear", () => { shownSeq = null; card.classList.remove("on"); });
+  window.addEventListener("swuscanClear", e => {
+    if (shownSeq === null || !SwuSide.clears(SwuSide.of(e.detail), shownSide)) return;
+    shownSeq = null;
+    shownSide = null;
+    card.classList.remove("on");
+  });
 </script>
 </body>
 </html>
